@@ -5,12 +5,14 @@ export interface GraphvizSettings {
   dotPath: string;
   renderer: string;
   imageFormat: string;
+  apiKey: string;
 }
 
 export const DEFAULT_SETTINGS: GraphvizSettings = {
   dotPath: 'dot',
   renderer: 'dot',
-  imageFormat: 'png'
+  imageFormat: 'png',
+  apiKey: ''
 };
 
 export class GraphvizSettingsTab extends PluginSettingTab {
@@ -58,6 +60,15 @@ export class GraphvizSettingsTab extends PluginSettingTab {
       .setValue(this.plugin.settings.imageFormat)
       .onChange(async (value) => {
         this.plugin.settings.imageFormat = value;
+        await this.plugin.saveSettings();
+      }));
+  new Setting(containerEl)
+    .setName('OpenAI API Key')
+    .setDesc('OpenAI API Key')
+    .addText(text => text.setPlaceholder(DEFAULT_SETTINGS.apiKey)
+      .setValue(this.plugin.settings.apiKey)
+      .onChange(async (value) => {
+        this.plugin.settings.apiKey = value;
         await this.plugin.saveSettings();
       }));
   }
