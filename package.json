@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-graphviz",
+  "name": "obsidian-llm-graphviz",
   "version": "1.0.5",
   "description": "Graphviz rendering for obsidian md",
   "main": "main.js",
