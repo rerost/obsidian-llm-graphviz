@@ -28,10 +28,10 @@ export default class GraphvizPlugin extends Plugin {
             script.src = src;
             (document.head || document.documentElement).appendChild(script);
           }
-          this.registerMarkdownCodeBlockProcessor('dot', processors.d3graphvizProcessor.bind(processors));
+          this.registerMarkdownCodeBlockProcessor('prompt-dot', processors.d3graphvizProcessor.bind(processors));
           break;
         default:
-          this.registerMarkdownCodeBlockProcessor('dot', processors.imageProcessor.bind(processors));
+          this.registerMarkdownCodeBlockProcessor('prompt-dot', processors.imageProcessor.bind(processors));
       }
 
       this.registerEditorSuggest(new Suggesters(this.app, this));
