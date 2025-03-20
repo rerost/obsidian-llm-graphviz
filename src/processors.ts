@@ -75,8 +75,8 @@ export class Processors {
   }
 
   public async imageProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const stringBeforeBrace = source.split('{', 1)[0]?.trim() || '';
+    const wordsBeforeBrace = stringBeforeBrace.split(' ');
 
     try {
       console.debug('Call image processor');
@@ -99,8 +99,21 @@ export class Processors {
     }
   }
   
-  public async d3graphvizProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
+  public async d3graphvizProcessor(source: string, el: HTMLElement, context: MarkdownPostProcessorContext): Promise<void> {
     console.debug('Call d3graphvizProcessor');
+
+    // Try to access d3 safely
+    try {
+      // @ts-ignore
+      if (!window.d3) {
+        console.debug('d3 is not available, falling back to imageProcessor');
+        // Fallback to image processor if d3 is not available
+        return this.imageProcessor(source, el, context);
+      }
+    } catch (e) {
+      console.debug('Error checking d3 availability:', e);
+      return this.imageProcessor(source, el, context);
+    }
 
     let responseBody = {
       "dot_code": "",
@@ -162,8 +175,8 @@ export class Processors {
     }
 
     // 以下は既存のグラフ処理コード
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const stringBeforeBrace = source.split('{', 1)[0]?.trim() || '';
+    const wordsBeforeBrace = stringBeforeBrace.split(' ');
 
     const div = document.createElement('div');
     const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);
@@ -174,19 +187,33 @@ export class Processors {
     const script = document.createElement('script');
     // graphviz(graphId).renderDot(source); => does not work, ideas how to use it?
     // Besides, sometimes d3 is undefined, so there must be a proper way to integrate d3.
-    console.log("その他", responseBody["sometext"], responseBody)
-    const escapedSource = responseBody["dot_code"].replaceAll('\\', '\\\\').replaceAll('`','\\`');
+    console.log('その他', responseBody['sometext'], responseBody);
+    const escapedSource = responseBody['dot_code'].replaceAll('\\', '\\\\').replaceAll('`','\\`');
     script.text =
-      `if( typeof d3 != 'undefined') { 
-        d3.select("#${graphId}").graphviz()
-        .onerror(d3error)
-       .renderDot(\`${escapedSource}\`);
-    }
-    console.log(d3)
-    function d3error (err) {
-        d3.select("#${graphId}").html(\`<div class="d3graphvizError"> d3.graphviz(): \`+err.toString()+\`</div>\`);
+      `let checkD3Attempts = 0;
+      function tryRenderWithD3() {
+        if (typeof d3 !== 'undefined') { 
+          d3.select('#${graphId}').graphviz()
+            .onerror(d3error)
+            .renderDot(\`${escapedSource}\`);
+        } else if (checkD3Attempts < 10) {
+          checkD3Attempts++;
+          console.log('Waiting for d3 to load... attempt ' + checkD3Attempts);
+          setTimeout(tryRenderWithD3, 500);
+        } else {
+          console.error('d3 failed to load after 10 attempts');
+          document.getElementById('${graphId}').innerHTML = 
+            \`<div class="d3graphvizError">d3 failed to load. Please refresh or check console for errors.</div>\`;
+        }
+      }
+      
+      tryRenderWithD3();
+      
+      function d3error(err) {
+        document.getElementById('${graphId}').innerHTML = 
+          \`<div class="d3graphvizError">d3.graphviz(): \`+err.toString()+\`</div>\`;
         console.error('Caught error on ${graphId}: ', err);
-    }`;
+      }`;
     el.appendChild(script);
   }
 }
