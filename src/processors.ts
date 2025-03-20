@@ -78,12 +78,24 @@ export class Processors {
     const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
     const wordsBeforeBrace = stringBeforeBrace.split();
 
+    // Create and show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'graphviz-loading';
+    const spinner = document.createElement('div');
+    spinner.className = 'graphviz-loading-spinner';
+    loadingDiv.appendChild(spinner);
+    el.appendChild(loadingDiv);
+    
     try {
       console.debug('Call image processor');
       //make sure url is defined. once the setting gets reset to default, an empty string will be returned by settings
       const responseBody = await this.callOpenAI(source);
       console.debug("その他", responseBody["sometext"], responseBody)
       const imageData = await this.convertToImage(responseBody.dot_code);
+      
+      // Remove loading indicator
+      el.removeChild(loadingDiv);
+      
       const blob = new Blob([ imageData ], {'type': this.imageMimeType.get(this.plugin.settings.imageFormat)});
       const url = window.URL || window.webkitURL;
       const blobUrl = url.createObjectURL(blob);
@@ -92,6 +104,9 @@ export class Processors {
       img.setAttribute("src", blobUrl);
       el.appendChild(img);
     } catch (errMessage) {
+      // Remove loading indicator even on error
+      el.removeChild(loadingDiv);
+      
       console.error('convert to image error', errMessage);
       const pre = document.createElement('pre');
       const code = document.createElement('code');
@@ -104,34 +119,58 @@ export class Processors {
   public async d3graphvizProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
     console.debug('Call d3graphvizProcessor');
 
-    const responseBody = await this.callOpenAI(source);
-    // 以下は既存のグラフ処理コード
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    // Create and show loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'graphviz-loading';
+    const spinner = document.createElement('div');
+    spinner.className = 'graphviz-loading-spinner';
+    loadingDiv.appendChild(spinner);
+    el.appendChild(loadingDiv);
+    
+    try {
+      const responseBody = await this.callOpenAI(source);
+      
+      // Remove loading indicator
+      el.removeChild(loadingDiv);
+      
+      // 以下は既存のグラフ処理コード
+      const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
+      const wordsBeforeBrace = stringBeforeBrace.split();
 
-    const div = document.createElement('div');
-    const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);
-    div.setAttr('id', graphId);
-    div.setAttr('style', 'text-align: center');
-    div.setAttr('class', 'graphviz ' + wordsBeforeBrace.join(" "));
-    el.appendChild(div);
-    const script = document.createElement('script');
-    // graphviz(graphId).renderDot(source); => does not work, ideas how to use it?
-    // Besides, sometimes d3 is undefined, so there must be a proper way to integrate d3.
-    console.log("その他", responseBody["sometext"], responseBody)
-    const escapedSource = responseBody["dot_code"].replaceAll('\\', '\\\\').replaceAll('`','\\`');
-    script.text =
-      `if( typeof d3 != 'undefined') { 
-        d3.select("#${graphId}").graphviz()
-        .onerror(d3error)
-       .renderDot(\`${escapedSource}\`);
+      const div = document.createElement('div');
+      const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);
+      div.setAttr('id', graphId);
+      div.setAttr('style', 'text-align: center');
+      div.setAttr('class', 'graphviz ' + wordsBeforeBrace.join(" "));
+      el.appendChild(div);
+      const script = document.createElement('script');
+      // graphviz(graphId).renderDot(source); => does not work, ideas how to use it?
+      // Besides, sometimes d3 is undefined, so there must be a proper way to integrate d3.
+      console.log("その他", responseBody["sometext"], responseBody)
+      const escapedSource = responseBody["dot_code"].replaceAll('\\', '\\\\').replaceAll('`','\\`');
+      script.text =
+        `if( typeof d3 != 'undefined') { 
+          d3.select("#${graphId}").graphviz()
+          .onerror(d3error)
+         .renderDot(\`${escapedSource}\`);
+      }
+      console.log(d3)
+      function d3error (err) {
+          d3.select("#${graphId}").html(\`<div class="d3graphvizError"> d3.graphviz(): \`+err.toString()+\`</div>\`);
+          console.error('Caught error on ${graphId}: ', err);
+      }`;
+      el.appendChild(script);
+    } catch (error) {
+      // Remove loading indicator on error
+      el.removeChild(loadingDiv);
+      
+      console.error('D3 graphviz processing error:', error);
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      pre.appendChild(code);
+      code.setText(error.toString());
+      el.appendChild(pre);
     }
-    console.log(d3)
-    function d3error (err) {
-        d3.select("#${graphId}").html(\`<div class="d3graphvizError"> d3.graphviz(): \`+err.toString()+\`</div>\`);
-        console.error('Caught error on ${graphId}: ', err);
-    }`;
-    el.appendChild(script);
   }
 
   private async callOpenAI(source: string): Promise<{dot_code: string, error_message: string, sometext: string}> {

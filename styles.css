@@ -7,3 +7,31 @@
   filter: invert(100%);
 }
 
+/* Loading spinner styles */
+.graphviz-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.graphviz-loading-spinner {
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-left-color: #888;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Dark theme support */
+.theme-dark .graphviz-loading-spinner {
+  border-color: rgba(255, 255, 255, 0.1);
+  border-left-color: #ccc;
+}
+
