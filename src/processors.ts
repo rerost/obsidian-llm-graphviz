@@ -151,7 +151,7 @@ export class Processors {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          "model": "gpt-4o-mini",
+          "model": this.plugin.settings.model,
           "messages": [{ role: 'user', content: source }],
           "response_format": {
             "type": "json_schema",
@@ -194,5 +194,38 @@ export class Processors {
       console.error('ChatGPTへの問い合わせでエラーが発生しました:', error);
     }
     return responseBody;
+  }
+
+  public async fetchModels(): Promise<string[]> {
+    const apiKey = this.plugin.settings.apiKey;
+    // Default models in case API call fails
+    const defaultModels = ["gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"];
+    
+    try {
+      // Only fetch if API key is provided
+      if (!apiKey) {
+        console.debug('No API key provided, using default models');
+        return defaultModels;
+      }
+      
+      const response = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Filter models suitable for chat completions (those containing 'gpt')
+        return data.data
+          .filter((model: any) => model.id.includes('gpt'))
+          .map((model: any) => model.id);
+      }
+    } catch (error) {
+      console.error('Error fetching OpenAI models:', error);
+    }
+    
+    return defaultModels;
   }
 }
