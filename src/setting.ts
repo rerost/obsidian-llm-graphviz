@@ -1,18 +1,21 @@
 import { PluginSettingTab, Setting } from 'obsidian';
 import GraphvizPlugin from './main';
+import { Processors } from './processors';
 
 export interface GraphvizSettings {
   dotPath: string;
   renderer: string;
   imageFormat: string;
   apiKey: string;
+  model: string;  // Add this line for model selection
 }
 
 export const DEFAULT_SETTINGS: GraphvizSettings = {
   dotPath: 'dot',
   renderer: 'dot',
   imageFormat: 'png',
-  apiKey: ''
+  apiKey: '',
+  model: 'gpt-4o-mini'  // Add default model
 };
 
 export class GraphvizSettingsTab extends PluginSettingTab {
@@ -71,5 +74,32 @@ export class GraphvizSettingsTab extends PluginSettingTab {
         this.plugin.settings.apiKey = value;
         await this.plugin.saveSettings();
       }));
+
+  new Setting(containerEl)
+    .setName('OpenAI Model')
+    .setDesc('Select the OpenAI model to use for generating diagrams')
+    .addDropdown(async (dropdown) => {
+      // Add a loading option
+      dropdown.addOption('loading', 'Loading models...');
+      dropdown.setValue(this.plugin.settings.model);
+      
+      // Try to fetch models
+      const processors = new Processors(this.plugin);
+      try {
+        const models = await processors.fetchModels();
+        dropdown.selectEl.empty();
+        for (const model of models) {
+          dropdown.addOption(model, model);
+        }
+        dropdown.setValue(this.plugin.settings.model);
+      } catch (error) {
+        console.error('Error loading models:', error);
+      }
+      
+      dropdown.onChange(async (value) => {
+        this.plugin.settings.model = value;
+        await this.plugin.saveSettings();
+      });
+    });
   }
 }
