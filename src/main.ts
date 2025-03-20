@@ -21,13 +21,16 @@ export default class GraphvizPlugin extends Plugin {
 
 
     this.app.workspace.onLayoutReady(() => {
+      // Always load d3 sources for prompt-dot regardless of renderer setting
+      for (const src of d3Sources) {
+        const script = document.createElement('script');
+        script.src = src;
+        (document.head || document.documentElement).appendChild(script);
+      }
+      
+      // Register appropriate processors based on renderer setting
       switch (this.settings.renderer) {
         case 'd3_graphviz':
-          for (const src of d3Sources) {
-            const script = document.createElement('script');
-            script.src = src;
-            (document.head || document.documentElement).appendChild(script);
-          }
           this.registerMarkdownCodeBlockProcessor('prompt-dot', processors.d3graphvizProcessor.bind(processors));
           break;
         default:

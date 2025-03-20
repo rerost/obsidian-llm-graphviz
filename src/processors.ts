@@ -22,7 +22,7 @@ export class Processors {
     return new Promise<Uint8Array>((resolve, reject) => {
       const cmdPath = this.plugin.settings.dotPath;
       const imageFormat = this.plugin.settings.imageFormat;
-      const parameters = [ `-T${imageFormat}`, `-Gbgcolor=transparent`, `-Gstylesheet=obs-gviz.css`, sourceFile ];
+      const parameters = [ `-T${imageFormat}`, '-Gbgcolor=transparent', '-Gstylesheet=obs-gviz.css', sourceFile ];
 
       console.debug(`Starting dot process ${cmdPath}, ${parameters}`);
       const dotProcess = spawn(cmdPath, parameters);
@@ -75,8 +75,8 @@ export class Processors {
   }
 
   public async imageProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const stringBeforeBrace = source.split('{', 1)[0]?.trim() || '';
+    const wordsBeforeBrace = stringBeforeBrace.split(' ');
 
     try {
       console.debug('Call image processor');
@@ -86,8 +86,8 @@ export class Processors {
       const url = window.URL || window.webkitURL;
       const blobUrl = url.createObjectURL(blob);
       const img = document.createElement('img');
-      img.setAttribute("class", "graphviz " + wordsBeforeBrace.join(" "));
-      img.setAttribute("src", blobUrl);
+      img.setAttribute('class', 'graphviz ' + wordsBeforeBrace.join(' '));
+      img.setAttribute('src', blobUrl);
       el.appendChild(img);
     } catch (errMessage) {
       console.error('convert to image error', errMessage);
@@ -103,13 +103,13 @@ export class Processors {
     console.debug('Call d3graphvizProcessor');
 
     let responseBody = {
-      "dot_code": "",
-      "error_message": "",
-      "sometext": ""
+      'dot_code': '',
+      'error_message': '',
+      'sometext': ''
     };
     // OpenAI APIの代わりにフェッチを使用
     try {
-      const apiKey = this.plugin.settings.apiKey
+      const apiKey = this.plugin.settings.apiKey;
       // 以下は実際のAPIリクエストを行う場合のコード例（APIキーが必要）
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -118,35 +118,35 @@ export class Processors {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          "model": "gpt-4o-mini",
-          "messages": [{ role: 'user', content: source }],
-          "response_format": {
-            "type": "json_schema",
-            "json_schema": {
-              "name": "dot_language_response",
-              "strict": true,
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "dot_code": {
-                    "type": "string",
-                    "description": "DOT形式のグラフ定義コード。コードブロックでdotのみ、そのまま渡してもエラーにならない"
+          'model': 'gpt-4o-mini',
+          'messages': [{ role: 'user', content: source }],
+          'response_format': {
+            'type': 'json_schema',
+            'json_schema': {
+              'name': 'dot_language_response',
+              'strict': true,
+              'schema': {
+                'type': 'object',
+                'properties': {
+                  'dot_code': {
+                    'type': 'string',
+                    'description': 'DOT形式のグラフ定義コード。コードブロックでdotのみ、そのまま渡してもエラーにならない'
                   },
-                  "error_message": {
-                    "type": "string",
-                    "description": "エラーが発生した場合のエラーメッセージ"
+                  'error_message': {
+                    'type': 'string',
+                    'description': 'エラーが発生した場合のエラーメッセージ'
                   },
-                  "sometext": {
-                    "type": "string",
-                    "description": "dot以外の記述があればこちら"
+                  'sometext': {
+                    'type': 'string',
+                    'description': 'dot以外の記述があればこちら'
                   }
                 },
-                "required": [
-                  "dot_code",
-                  "error_message",
-                  "sometext"
+                'required': [
+                  'dot_code',
+                  'error_message',
+                  'sometext'
                 ],
-                "additionalProperties": false
+                'additionalProperties': false
               }
             }
           }
@@ -162,31 +162,45 @@ export class Processors {
     }
 
     // 以下は既存のグラフ処理コード
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const stringBeforeBrace = source.split('{', 1)[0]?.trim() || '';
+    const wordsBeforeBrace = stringBeforeBrace.split(' ');
 
     const div = document.createElement('div');
     const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);
     div.setAttr('id', graphId);
     div.setAttr('style', 'text-align: center');
-    div.setAttr('class', 'graphviz ' + wordsBeforeBrace.join(" "));
+    div.setAttr('class', 'graphviz ' + wordsBeforeBrace.join(' '));
     el.appendChild(div);
     const script = document.createElement('script');
     // graphviz(graphId).renderDot(source); => does not work, ideas how to use it?
     // Besides, sometimes d3 is undefined, so there must be a proper way to integrate d3.
-    console.log("その他", responseBody["sometext"], responseBody)
-    const escapedSource = responseBody["dot_code"].replaceAll('\\', '\\\\').replaceAll('`','\\`');
+    console.log('その他', responseBody['sometext'], responseBody);
+    const escapedSource = responseBody['dot_code'].replaceAll('\\', '\\\\').replaceAll('`','\\`');
     script.text =
-      `if( typeof d3 != 'undefined') { 
-        d3.select("#${graphId}").graphviz()
-        .onerror(d3error)
-       .renderDot(\`${escapedSource}\`);
-    }
-    console.log(d3)
-    function d3error (err) {
-        d3.select("#${graphId}").html(\`<div class="d3graphvizError"> d3.graphviz(): \`+err.toString()+\`</div>\`);
+      `let checkD3Attempts = 0;
+      function tryRenderWithD3() {
+        if (typeof d3 !== 'undefined') { 
+          d3.select('#${graphId}').graphviz()
+            .onerror(d3error)
+            .renderDot(\`${escapedSource}\`);
+        } else if (checkD3Attempts < 10) {
+          checkD3Attempts++;
+          console.log('Waiting for d3 to load... attempt ' + checkD3Attempts);
+          setTimeout(tryRenderWithD3, 500);
+        } else {
+          console.error('d3 failed to load after 10 attempts');
+          document.getElementById('${graphId}').innerHTML = 
+            \`<div class="d3graphvizError">d3 failed to load. Please refresh or check console for errors.</div>\`;
+        }
+      }
+      
+      tryRenderWithD3();
+      
+      function d3error(err) {
+        document.getElementById('${graphId}').innerHTML = 
+          \`<div class="d3graphvizError">d3.graphviz(): \`+err.toString()+\`</div>\`;
         console.error('Caught error on ${graphId}: ', err);
-    }`;
+      }`;
     el.appendChild(script);
   }
 }
