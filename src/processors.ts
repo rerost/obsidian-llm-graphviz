@@ -81,7 +81,9 @@ export class Processors {
     try {
       console.debug('Call image processor');
       //make sure url is defined. once the setting gets reset to default, an empty string will be returned by settings
-      const imageData = await this.convertToImage(source);
+      const responseBody = await this.callOpenAI(source);
+      console.debug("その他", responseBody["sometext"], responseBody)
+      const imageData = await this.convertToImage(responseBody.dot_code);
       const blob = new Blob([ imageData ], {'type': this.imageMimeType.get(this.plugin.settings.imageFormat)});
       const url = window.URL || window.webkitURL;
       const blobUrl = url.createObjectURL(blob);
