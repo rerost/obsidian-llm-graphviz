@@ -17,6 +17,7 @@ This plugin uses local graphviz dot executable for rendering.
 1. Install graphviz if you haven't yet or use the experimental d3-graphviz support.
    To download and install graphviz, follow [official instructions](https://graphviz.org/download/).
 1. Inside Obsidian options dialog, `PLUGIN OPTIONS > Obsidian Graphviz > Dot Path`, set path to your dot file.
+1. Optionally, select the image format (PNG or SVG) in the plugin settings. SVG provides better quality and scaling.
 1. Create a fenced codeblock using `dot` as the language.
    Specify your graphviz code inside. Then preview it.
    Documentation on Graphviz can be found on [graphviz.org](https://graphviz.org/documentation/)

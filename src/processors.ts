@@ -124,7 +124,20 @@ export class Processors {
       `if( typeof d3 != 'undefined') { 
         d3.select("#${graphId}").graphviz()
         .onerror(d3error)
-       .renderDot(\`${escapedSource}\`);
+        .renderDot(\`${escapedSource}\`)
+        .on("end", function() {
+          if ("${this.plugin.settings.imageFormat}" === "svg") {
+            const svgElement = d3.select("#${graphId} svg");
+            if (!svgElement.empty()) {
+              svgElement.attr("class", "graphviz-svg");
+            }
+          } else {
+            const svgElement = d3.select("#${graphId} svg");
+            if (!svgElement.empty()) {
+              svgElement.attr("class", "graphviz-png");
+            }
+          }
+        });
     }
     console.log(d3)
     function d3error (err) {

@@ -56,7 +56,7 @@ export class GraphvizSettingsTab extends PluginSettingTab {
 
 	new Setting(containerEl)
     .setName('Image format')
-    .setDesc('Graphviz output format.')
+    .setDesc('Graphviz output format. SVG provides better quality and scaling for diagrams.')
     .addDropdown(dropdown => dropdown
       .addOption('png', 'png')
       .addOption('svg', 'svg')
