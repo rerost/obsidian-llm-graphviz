@@ -76,7 +76,7 @@ export class Processors {
 
   public async imageProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
     const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const wordsBeforeBrace = stringBeforeBrace.split(" ");
 
     try {
       console.debug('Call image processor');
@@ -107,7 +107,7 @@ export class Processors {
     const responseBody = await this.callOpenAI(source);
     // 以下は既存のグラフ処理コード
     const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
+    const wordsBeforeBrace = stringBeforeBrace.split(" ");
 
     const div = document.createElement('div');
     const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);

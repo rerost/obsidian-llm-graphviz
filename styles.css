@@ -7,3 +7,14 @@
   filter: invert(100%);
 }
 
+/* SVG styling for better scaling and quality */
+.graphviz[src$=".svg"] {
+  width: 100%;
+  height: auto;
+}
+
+/* Maintain dark mode compatibility for SVG */
+.theme-dark .block-language-dot .graphviz[src$=".svg"] {
+  filter: invert(100%);
+}
+
