@@ -129,7 +129,10 @@ export class Processors {
           if ("${this.plugin.settings.imageFormat}" === "svg") {
             const svgElement = d3.select("#${graphId} svg");
             if (!svgElement.empty()) {
-              svgElement.attr("class", "graphviz-svg");
+              svgElement.attr("class", "graphviz-svg")
+                .attr("width", "100%")
+                .attr("height", "auto")
+                .attr("preserveAspectRatio", "xMidYMid meet");
             }
           } else {
             const svgElement = d3.select("#${graphId} svg");
