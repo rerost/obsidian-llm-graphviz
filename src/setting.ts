@@ -95,16 +95,49 @@ export class GraphvizSettingsTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
+    // --- OpenAI Model Dropdown ---
     this.modelSetting = new Setting(containerEl)
       .setName('OpenAI Model')
-      .setDesc('The OpenAI model to use for generation (e.g., gpt-4o-mini, gpt-4).')
-      .addText(text => text.setPlaceholder(DEFAULT_SETTINGS.model)
-        .setValue(this.plugin.settings.model)
-        .onChange(async (value) => {
+      .setDesc('The OpenAI model to use for generation.')
+      // Temporarily add a placeholder or keep the text input look until models load
+      .addDropdown(dropdown => {
+        // Add the currently selected value as the initial (potentially only) option
+        dropdown.addOption(this.plugin.settings.model, this.plugin.settings.model);
+        dropdown.setValue(this.plugin.settings.model);
+        dropdown.setDisabled(true); // Disable until models are loaded
+
+        // Asynchronously fetch models and update the dropdown
+        this.plugin.fetchModels().then(models => {
+          // Re-enable the dropdown
+          dropdown.setDisabled(false);
+          // Clear initial option (or keep it if needed)
+          // dropdown.selectEl.options.length = 0; // Clear options if you don't want the initial one
+
+          // Add fetched models
+          models.forEach(modelId => {
+            // Avoid adding the initial option again if it exists
+            if (dropdown.selectEl.options[0]?.value !== modelId) {
+                 dropdown.addOption(modelId, modelId);
+            }
+          });
+
+          // Ensure the saved value is selected (might be redundant but safe)
+          dropdown.setValue(this.plugin.settings.model);
+
+        }).catch(error => {
+          console.error("Failed to update model list:", error);
+          // Keep the dropdown disabled or show a message?
+          // For now, it remains disabled with the current value.
+          // Or, re-enable and just show defaults/current value if preferred.
+          // dropdown.setDisabled(false); // Option: re-enable even on error
+        });
+
+        // Setup onChange handler
+        dropdown.onChange(async (value) => {
           this.plugin.settings.model = value;
           await this.plugin.saveSettings();
-        }));
-        // TODO: 可能であればモデルリストをフェッチしてドロップダウンにする改善
+        });
+      }); // End of addDropdown
 
     // 初期表示状態を設定
     this.updateSettingsVisibility();

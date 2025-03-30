@@ -295,35 +295,4 @@ export class Processors {
           el.appendChild(img);
       }
   }
-
-  public async fetchModels(): Promise<string[]> {
-    const apiKey = this.plugin.settings.apiKey;
-    const defaultModels = ["gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"];
-    
-    try {
-      if (!apiKey) {
-        console.debug('No API key provided, using default models');
-        return defaultModels;
-      }
-      
-      const response = await fetch('https://api.openai.com/v1/models', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        return data.data
-          .filter((model: any) => model.id.includes('gpt'))
-          .map((model: any) => model.id)
-          .sort();
-      }
-    } catch (error) {
-      console.error('Error fetching OpenAI models:', error);
-    }
-    
-    return defaultModels.sort();
-  }
 }

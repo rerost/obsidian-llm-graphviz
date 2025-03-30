@@ -45,4 +45,46 @@ export default class GraphvizPlugin extends Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+
+  public async fetchModels(): Promise<string[]> {
+    const apiKey = this.settings.apiKey;
+    const defaultModels = ["gpt-4o-mini", "gpt-4", "gpt-3.5-turbo"];
+
+    try {
+      if (!apiKey) {
+        console.debug('No API key provided, using default models for dropdown.');
+        return [...defaultModels, this.settings.model]
+               .filter((v, i, a) => a.indexOf(v) === i)
+               .sort();
+      }
+
+      const response = await fetch('https://api.openai.com/v1/models', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const fetchedModels = data.data
+          .filter((model: any) => model.id.includes('gpt'))
+          .map((model: any) => model.id) as string[];
+
+        return [...fetchedModels, this.settings.model, ...defaultModels]
+               .filter((v, i, a) => a.indexOf(v) === i)
+               .sort();
+      } else {
+          console.error(`Error fetching models: ${response.status} ${response.statusText}`, await response.text());
+          return [...defaultModels, this.settings.model]
+                 .filter((v, i, a) => a.indexOf(v) === i)
+                 .sort();
+      }
+    } catch (error) {
+      console.error('Error fetching OpenAI models:', error);
+      return [...defaultModels, this.settings.model]
+             .filter((v, i, a) => a.indexOf(v) === i)
+             .sort();
+    }
+  }
 }
