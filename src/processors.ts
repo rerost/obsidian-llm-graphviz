@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { spawn } from 'child_process';
 import { createHash } from 'crypto';
 import GraphvizPlugin from './main';
-// import {graphviz} from 'd3-graphviz'; => does not work, ideas how to embed d3 into the plugin?
 
 export class Processors {
   plugin: GraphvizPlugin;
@@ -101,39 +100,6 @@ export class Processors {
     }
   }
   
-  public async d3graphvizProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
-    console.debug('Call d3graphvizProcessor');
-
-    const responseBody = await this.callOpenAI(source);
-    // 以下は既存のグラフ処理コード
-    const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
-    const wordsBeforeBrace = stringBeforeBrace.split();
-
-    const div = document.createElement('div');
-    const graphId = 'd3graph_' + createHash('md5').update(source).digest('hex').substring(0, 6);
-    div.setAttr('id', graphId);
-    div.setAttr('style', 'text-align: center');
-    div.setAttr('class', 'graphviz ' + wordsBeforeBrace.join(" "));
-    el.appendChild(div);
-    const script = document.createElement('script');
-    // graphviz(graphId).renderDot(source); => does not work, ideas how to use it?
-    // Besides, sometimes d3 is undefined, so there must be a proper way to integrate d3.
-    console.log("その他", responseBody["sometext"], responseBody)
-    const escapedSource = responseBody["dot_code"].replaceAll('\\', '\\\\').replaceAll('`','\\`');
-    script.text =
-      `if( typeof d3 != 'undefined') { 
-        d3.select("#${graphId}").graphviz()
-        .onerror(d3error)
-       .renderDot(\`${escapedSource}\`);
-    }
-    console.log(d3)
-    function d3error (err) {
-        d3.select("#${graphId}").html(\`<div class="d3graphvizError"> d3.graphviz(): \`+err.toString()+\`</div>\`);
-        console.error('Caught error on ${graphId}: ', err);
-    }`;
-    el.appendChild(script);
-  }
-
   private async callOpenAI(source: string): Promise<{dot_code: string, error_message: string, sometext: string}> {
     const apiKey = this.plugin.settings.apiKey
     let responseBody = {
