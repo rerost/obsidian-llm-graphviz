@@ -16,12 +16,7 @@ export default class GraphvizPlugin extends Plugin {
     const processors = new Processors(this);
 
     this.app.workspace.onLayoutReady(() => {
-      switch (this.settings.renderer) {
-        default:
-          this.registerMarkdownCodeBlockProcessor('prompt-dot', processors.imageProcessor.bind(processors));
-      }
-
-      this.registerEditorSuggest(new Suggesters(this.app, this));
+      this.registerMarkdownCodeBlockProcessor('prompt-dot', processors.imageProcessor.bind(processors));
     });
   }
 

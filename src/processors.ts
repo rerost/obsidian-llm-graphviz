@@ -76,37 +76,124 @@ export class Processors {
   public async imageProcessor(source: string, el: HTMLElement, _: MarkdownPostProcessorContext): Promise<void> {
     const stringBeforeBrace = source.split("{", 1)[0]?.trim() || "";
     const wordsBeforeBrace = stringBeforeBrace.split();
+    const imageFormat = this.plugin.settings.imageFormat;
 
     try {
-      console.debug('Call image processor');
+      console.debug('Call image processor (format: ' + imageFormat + ')');
       //make sure url is defined. once the setting gets reset to default, an empty string will be returned by settings
       const responseBody = await this.callOpenAI(source);
-      console.debug("その他", responseBody["sometext"], responseBody)
-      const imageData = await this.convertToImage(responseBody.dot_code);
-      const blob = new Blob([ imageData ], {'type': this.imageMimeType.get(this.plugin.settings.imageFormat)});
-      const url = window.URL || window.webkitURL;
-      const blobUrl = url.createObjectURL(blob);
-      const img = document.createElement('img');
-      img.setAttribute("class", "graphviz " + wordsBeforeBrace.join(" "));
-      img.setAttribute("src", blobUrl);
-      el.appendChild(img);
+
+      if (imageFormat === 'svg') {
+        // SVGモードの場合
+        if (responseBody.svg_code) {
+          console.debug('Rendering SVG directly');
+          const div = document.createElement('div');
+          div.setAttribute("class", "graphviz-svg-container " + wordsBeforeBrace.join(" "));
+          // LLMが生成したSVGを直接挿入
+          // 注意: サニタイズが必要な場合がありますが、Obsidianのコンテキストでは
+          // 通常ユーザー自身の入力に基づいているため、ここでは直接設定します。
+          div.innerHTML = responseBody.svg_code;
+          // SVG要素自体にクラスを追加してCSSで制御しやすくする
+          const svgElement = div.querySelector('svg');
+          if (svgElement) {
+            svgElement.classList.add("graphviz");
+            // SVGのサイズ調整などが必要な場合はここで行う
+            // svgElement.style.maxWidth = '100%';
+            // svgElement.style.height = 'auto';
+          }
+          el.appendChild(div);
+        } else if (responseBody.error_message) {
+            throw new Error(`SVG generation failed: ${responseBody.error_message}`);
+        } else {
+            throw new Error('SVG code is empty in the response.');
+        }
+
+      } else {
+        // PNG (または他の画像) モードの場合 (従来の処理)
+        console.debug("その他", responseBody["sometext"], responseBody)
+        if (responseBody.dot_code) {
+            const imageData = await this.convertToImage(responseBody.dot_code);
+            const blob = new Blob([ imageData ], {'type': this.imageMimeType.get(imageFormat)});
+            const url = window.URL || window.webkitURL;
+            const blobUrl = url.createObjectURL(blob);
+            const img = document.createElement('img');
+            img.setAttribute("class", "graphviz " + wordsBeforeBrace.join(" "));
+            img.setAttribute("src", blobUrl);
+            el.appendChild(img);
+        } else if (responseBody.error_message) {
+            throw new Error(`DOT generation failed: ${responseBody.error_message}`);
+        } else {
+            throw new Error('DOT code is empty in the response.');
+        }
+      }
+
     } catch (errMessage) {
-      console.error('convert to image error', errMessage);
+      console.error('Error processing graph:', errMessage);
       const pre = document.createElement('pre');
       const code = document.createElement('code');
       pre.appendChild(code);
-      code.setText(errMessage);
+      code.setText(errMessage instanceof Error ? errMessage.message : String(errMessage)); // エラーメッセージを適切に表示
       el.appendChild(pre);
     }
   }
   
-  private async callOpenAI(source: string): Promise<{dot_code: string, error_message: string, sometext: string}> {
-    const apiKey = this.plugin.settings.apiKey
-    let responseBody = {
-      "dot_code": "",
-      "error_message": "",
-      "sometext": ""
-    };
+  private async callOpenAI(source: string): Promise<{dot_code?: string, svg_code?: string, error_message?: string, sometext?: string}> {
+    const apiKey = this.plugin.settings.apiKey;
+    const imageFormat = this.plugin.settings.imageFormat;
+    // レスポンスボディの初期化を修正
+    let responseBody: {dot_code?: string, svg_code?: string, error_message?: string, sometext?: string} = {};
+
+    // スキーマとプロンプトを動的に決定
+    let schema: any;
+    let promptContent: string;
+    const requiredFields: string[] = ["error_message", "sometext"];
+
+    if (imageFormat === 'svg') {
+        // SVGモードのスキーマとプロンプト
+        promptContent = `Please generate an SVG image based on the following description. Respond in JSON format according to the provided schema. SVG code should be self-contained and renderable. Description: ${source}`;
+        schema = {
+            "type": "object",
+            "properties": {
+              "svg_code": {
+                "type": "string",
+                "description": "Self-contained SVG code representing the graph. It should render correctly when embedded in HTML."
+              },
+              "error_message": {
+                "type": "string",
+                "description": "Error message if SVG generation failed."
+              },
+              "sometext": {
+                "type": "string",
+                "description": "Any additional text or comments, not part of the SVG code."
+              }
+            },
+            "required": ["svg_code", ...requiredFields], // svg_code を必須にする
+            "additionalProperties": false
+        };
+    } else {
+        // DOTモードのスキーマとプロンプト (従来通り)
+        promptContent = `Please generate DOT language code based on the following description. Respond in JSON format according to the provided schema. DOT code should be valid and renderable by Graphviz. Description: ${source}`;
+        schema = {
+            "type": "object",
+            "properties": {
+                "dot_code": {
+                    "type": "string",
+                    "description": "DOT format graph definition code. Only the DOT code, suitable for direct input to Graphviz."
+                },
+                "error_message": {
+                    "type": "string",
+                    "description": "Error message if DOT generation failed."
+                },
+                "sometext": {
+                    "type": "string",
+                    "description": "Any additional text or comments, not part of the DOT code."
+                }
+            },
+            "required": ["dot_code", ...requiredFields], // dot_code を必須にする
+            "additionalProperties": false
+        };
+    }
+
 
     try {
       // 以下は実際のAPIリクエストを行う場合のコード例（APIキーが必要）
@@ -118,47 +205,59 @@ export class Processors {
         },
         body: JSON.stringify({
           "model": this.plugin.settings.model,
-          "messages": [{ role: 'user', content: source }],
+          "messages": [{ role: 'user', content: promptContent }], // プロンプトを適用
           "response_format": {
             "type": "json_schema",
             "json_schema": {
-              "name": "dot_language_response",
+              // スキーマ名を動的に変更 (必須ではないが一応)
+              "name": imageFormat === 'svg' ? "svg_response" : "dot_language_response",
               "strict": true,
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "dot_code": {
-                    "type": "string",
-                    "description": "DOT形式のグラフ定義コード。コードブロックでdotのみ、そのまま渡してもエラーにならない"
-                  },
-                  "error_message": {
-                    "type": "string",
-                    "description": "エラーが発生した場合のエラーメッセージ"
-                  },
-                  "sometext": {
-                    "type": "string",
-                    "description": "dot以外の記述があればこちら"
-                  }
-                },
-                "required": [
-                  "dot_code",
-                  "error_message",
-                  "sometext"
-                ],
-                "additionalProperties": false
-              }
+              "schema": schema // 決定したスキーマを適用
             }
           }
         })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        responseBody = JSON.parse(data.choices[0].message.content);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenAI API request failed: ${response.status} ${response.statusText} - ${errorText}`);
       }
+
+      const jsonResponse = await response.json();
+
+      // APIレスポンスから必要なデータを抽出
+      // choiceが空、またはmessageがない、またはcontentがない場合のエラーハンドリングを追加
+      if (!jsonResponse.choices || jsonResponse.choices.length === 0 || !jsonResponse.choices[0].message || !jsonResponse.choices[0].message.content) {
+        throw new Error('Invalid response structure from OpenAI API.');
+      }
+      // JSON文字列をパースしてresponseBodyに格納
+      responseBody = JSON.parse(jsonResponse.choices[0].message.content);
+
+
+      console.debug('OpenAI Response:', responseBody);
+
+      // エラーメッセージがあるかチェック (オプショナルだが、ある場合は早期にエラーとする)
+      if (responseBody.error_message) {
+          console.warn(`LLM reported an error: ${responseBody.error_message}`);
+          // SVG/DOTコードがなくてもエラーメッセージがあればそれを優先してエラーとするか、
+          // あるいは単に警告としてログに残すかは要件による。ここでは警告ログのみ。
+      }
+
+      // 必須フィールドの存在チェック (スキーマで required を指定していても、念のため)
+      const requiredCodeField = imageFormat === 'svg' ? 'svg_code' : 'dot_code';
+      if (!(requiredCodeField in responseBody)) {
+          // error_message があればそれを使い、なければ汎用的なエラーを投げる
+          throw new Error(responseBody.error_message || `Required field '${requiredCodeField}' is missing in the response.`);
+      }
+
+
     } catch (error) {
-      console.error('ChatGPTへの問い合わせでエラーが発生しました:', error);
+      console.error("Error calling OpenAI API or processing response:", error);
+      // エラー情報を responseBody に格納して返すか、ここで例外を再スローするか選択
+      // ここでは再スローし、呼び出し元の imageProcessor でキャッチする
+      throw error; // エラーを imageProcessor に伝播させる
     }
+
     return responseBody;
   }
 

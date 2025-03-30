@@ -4,7 +4,6 @@ import { Processors } from './processors';
 
 export interface GraphvizSettings {
   dotPath: string;
-  renderer: string;
   imageFormat: string;
   apiKey: string;
   model: string;  // Add this line for model selection
@@ -12,7 +11,6 @@ export interface GraphvizSettings {
 
 export const DEFAULT_SETTINGS: GraphvizSettings = {
   dotPath: 'dot',
-  renderer: 'dot',
   imageFormat: 'png',
   apiKey: '',
   model: 'gpt-4o-mini'  // Add default model
@@ -30,17 +28,6 @@ export class GraphvizSettingsTab extends PluginSettingTab {
     const {containerEl} = this;
 
     containerEl.empty();
-
-    new Setting(containerEl)
-    .setName('Graphviz renderer')
-    .setDesc('Please choose the Graphviz renderer, after that, you will need to restart obsidian.')
-    .addDropdown(dropdown => dropdown
-      .addOption('dot', 'dot')
-      .setValue(this.plugin.settings.renderer)
-      .onChange(async (value) => {
-        this.plugin.settings.renderer = value;
-        await this.plugin.saveSettings();
-      }));
 
     new Setting(containerEl).setName('Dot Path')
       .setDesc('Dot executable path')

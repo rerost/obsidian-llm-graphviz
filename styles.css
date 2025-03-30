@@ -7,3 +7,21 @@
   filter: invert(100%);
 }
 
+.theme-dark .block-language-prompt-dot img.graphviz,
+.theme-dark .block-language-prompt-dot .graphviz-svg-container svg.graphviz {
+  /* 画像とSVG要素の両方に適用 */
+  filter: invert(100%) hue-rotate(180deg); /* 色相回転を追加して色味を調整 */
+  background-color: transparent; /* 背景が反転しないように */
+}
+
+/* オプション: SVGコンテナのスタイル */
+.graphviz-svg-container {
+    max-width: 100%; /* コンテナが親要素を超えないように */
+}
+
+.graphviz-svg-container svg.graphviz {
+    display: block; /* SVGがインライン要素として扱われるのを防ぐ */
+    max-width: 100%; /* SVGがコンテナを超えないように */
+    height: auto; /* アスペクト比を維持 */
+}
+
