@@ -1,3 +1,5 @@
+Move to https://github.com/rerost/obsidian-llm-svg
+
 # Obsidian Graphviz
 
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/QAMichaelPeng/obsidian-graphviz)
